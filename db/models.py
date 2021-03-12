@@ -10,16 +10,16 @@ class BaseModel(Model):
         order_by = 'id'
 
 class Site(BaseModel):
-    name = CharField()
-    url = CharField()
+    name = CharField(max_length=100)
+    url = CharField(max_length=255)
 
     class Meta:
         db_table = 'site'
 
 class Category(BaseModel):
-    # url_site = ForeignKeyField(Site.url)
     site_id = ForeignKeyField(Site)
-    name = CharField()
+    name = CharField(max_length=100)
+    url = CharField(max_length=100)
 
     class Meta:
         db_table = 'category'
