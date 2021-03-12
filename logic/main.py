@@ -1,23 +1,19 @@
 import telebot
-from telebot import types
-
+import requests
 from config import TELEGRAM_TOKEN
-
-from keyboa import keyboa_maker
+from bs4 import BeautifulSoup as BS
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-link = ""
-user_id = 0
 
 class Site:
-
     name = "",
     url = ""
 
     def __init__(self, name, url):
         self.name = name
         self.url = url
+
 
 class Category:
     name = '',
@@ -27,14 +23,23 @@ class Category:
         self.name = name
         self.url = url
 
-# site = [{name: "Avito", 'url': 'https://www.avito.ru/rossiya'}, {"OLX": 'https://www.olx.ua/'}, {"ULA": 'https://youla.ru/'}]
-site = [Site("Avito", 'https://www.avito.ru/rossiya'), Site("OLX", 'https://www.olx.ua/'), Site("ULA", 'https://youla.ru/')]
-# category_for_olx = [{'Детский мир': 'https://www.olx.ua/detskiy-mir/'},
-#                     {'Запчасти для транспорта': 'https://www.olx.ua/zapchasti-dlya-transporta/'},
-#                     {'Дом и сад': 'https://www.olx.ua/dom-i-sad/'},
-#                     {'Електроника': 'https://www.olx.ua/elektronika/'},
-#                     {'Мода и стиль': 'https://www.olx.ua/moda-i-stil/'},
-#                     {'Хобби, отдых и спорт': 'https://www.olx.ua/hobbi-otdyh-i-sport/'}]
+class Mamont:
+    safe_deal = False,
+    ads = 0,
+    business_account = False
+    number = '',
+    link_to_ad = ''
+
+    def __init__(self, safe_deal, ads, business_account, number, link_to_ad):
+        self.safe_deal = safe_deal
+        self.ads = ads
+        self.business_account = business_account
+        self.number = number
+        self.link_to_ad = link_to_ad
+
+site = [Site("Avito", 'https://www.avito.ru/rossiya'), Site("Olx", 'https://www.olx.ua/'),
+        Site("Youla", 'https://youla.ru/')]
+
 category_for_olx = [Category('Детский мир', 'https://www.olx.ua/detskiy-mir/'),
                     Category('Запчасти для транспорта', 'https://www.olx.ua/zapchasti-dlya-transporta/'),
                     Category('Дом и сад', 'https://www.olx.ua/dom-i-sad/'),
@@ -42,52 +47,79 @@ category_for_olx = [Category('Детский мир', 'https://www.olx.ua/detski
                     Category('Мода и стиль', 'https://www.olx.ua/moda-i-stil/'),
                     Category('Хобби, отдых и спорт', 'https://www.olx.ua/hobbi-otdyh-i-sport/')]
 
+category_for_avito = [Category('Личные вещи', 'https://www.avito.ru/rossiya/lichnye_veschi'),
+                      Category('Хобби и отдых', 'https://www.avito.ru/rossiya/hobbi_i_otdyh'),
+                      Category('Транспорт', 'https://www.avito.ru/rossiya/transport'),
+                      Category('Для дома и дачи', 'https://www.avito.ru/rossiya/dlya_doma_i_dachi'),
+                      Category('Готовый бизнес и оборудование', 'https://www.avito.ru/rossiya/dlya_biznesa')]
+
+category_for_youla = [Category('Женская одежда', 'https://youla.ru/all/zhenskaya-odezhda'),
+                      Category('Телефоны и планшеты', 'https://youla.ru/all/smartfony-planshety'),
+                      Category('Запчасти и автотовары', 'https://youla.ru/all/avto-moto'),
+                      Category('Десткая одежда', 'https://youla.ru/all/detskaya-odezhda'),
+                      Category('Хендмейд', 'https://youla.ru/all/hehndmejd'),
+                      Category('Фото и видео камеры', 'https://youla.ru/all/foto-video'),
+                      Category('Компьютерная техника', 'https://youla.ru/all/kompyutery'),
+                      Category('Спорт и отдых', 'https://youla.ru/all/sport-otdyh'),
+                      Category('Красота и здоровье', 'https://youla.ru/all/krasota-i-zdorove'),
+                      Category('Для дома и дачи', 'https://youla.ru/all/dom-dacha'),
+                      Category('Бытовая техника', 'https://youla.ru/all/bytovaya-tekhnika'),
+                      Category('Електроника', 'https://youla.ru/all/ehlektronika'),
+                      Category('Детские товары', 'https://youla.ru/all/detskie'),
+                      Category('Мужская одежда', 'https://youla.ru/all/muzhskaya-odezhda')]
+
+
 @bot.message_handler(content_types=['text'])
 def start(message):
     markup = telebot.types.InlineKeyboardMarkup()
     for el in site:
         markup.add(telebot.types.InlineKeyboardButton(text=el.name, callback_data=el.url))
     bot.send_message(message.chat.id, text="Выбери сайт:", reply_markup=markup)
-    # if message.text == '/start':
-    #     site_keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-    #     for el in site:
-    #         site_keyboard.add(el.name)
-    #     # site_keyboard = keyboa_maker(items=site, copy_text_to_callback=True, items_in_row=3, )
-    #     msg = bot.reply_to(message, 'Test text', reply_markup=site_keyboard)
-    #     bot.register_next_step_handler(msg, chose_site)
-    #     # bot.send_message(chat_id=message.from_user.id, reply_markup=site_keyboard,
-    #     #                  text="Выбери сайт:",)
-    # else:
-    #     bot.send_message(message.from_user.id, 'Напиши /start')
-# 547336139
+
+
 @bot.callback_query_handler(func=lambda call: True)
 def query_handler(call):
     if call.data == "https://www.olx.ua/":
-        markup = telebot.types.InlineKeyboardMarkup()
-        for el in category_for_olx:
-            markup.add(telebot.types.InlineKeyboardButton(text=el.name, callback_data=el.url))
-        bot.send_message(call.from_user.id, text="Выбери сайт:", reply_markup=markup)
-    if call.data == "https://www.avito.ru/rossiya":
-        pass
-    if call.data == "https://youla.ru/":
+        create_markup(call, category_for_olx)
+    elif call.data == "https://www.avito.ru/rossiya":
+        create_markup(call, category_for_avito)
+    elif call.data == "https://youla.ru/":
+        create_markup(call, category_for_youla)
+    elif 'https://youla.ru/' in call.data:
+        parser_for_youla(call.data)
+    else:
         pass
 
-# # @bot.callback_query_handler(func=lambda call: True)
-# def chose_site(message):
-#     # keyboa_maker().
-#     if message.data == "https://www.olx.ua/":
-#         # category_for_olx_keyboard = keyboa_maker(items=site, copy_text_to_callback=True, items_in_row=3)
-#         category_for_olx_keyboard = types.ReplyKeyboardMarkup(one_time_keyboard=True)
-#         for el in category_for_olx:
-#             category_for_olx_keyboard.add(el.get())
-#         bot.send_message(chat_id=message.from_user.id, reply_markup=category_for_olx_keyboard,
-#                          text="Выбери сайт:")
-#         # bot.send_message(chat_id=message.from_user.id, reply_markup=category_for_olx_keyboard,
-#         #                  text="Выбери подкатегорию:")
-#     if message.data == "https://www.avito.ru/rossiya":
-#         pass
-#     if message.data == "https://youla.ru/":
-#         pass
+
+def create_markup(call, category):
+    markup = telebot.types.InlineKeyboardMarkup()
+    for el in category:
+        markup.add(telebot.types.InlineKeyboardButton(text=el.name, callback_data=el.url))
+    bot.send_message(call.from_user.id, text="Выбери рубрику:", reply_markup=markup)
+
+
+def parser_for_olx(olx_category_url):
+    pass
+
+
+def parser_for_avito(avito_category_url):
+    pass
+
+
+def parser_for_youla(youla_category_url):
+    main_request = requests.get(youla_category_url)
+    main_html = BS(main_request.content, 'html.parser')
+    for el in main_html.select('#app .product_section .product_item'):
+        link_to_ad = 'https://youla.ru' + el.contents[0].attrs['href']
+        request_to_ad = requests.get(youla_category_url)
+        soup = BS(request_to_ad.content, 'html.parser')
+        ads = soup.select('#app.sc-psedN.dyhZUV')
+        # for element in ad_html.select('#app .sc-pAYia.ceKQHP'):
+        #     ads = element
+        safe_deal = el.contents[0].attrs['href']
+        business_account = el.select('.subcategories-list clr')
+        number = el.select('.subcategories-list clr')
+        Mamont(safe_deal, ads, business_account, number, link_to_ad)
 
 if __name__ == '__main__':
     bot.polling(none_stop=True, interval=0)
