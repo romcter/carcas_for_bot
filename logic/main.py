@@ -114,6 +114,8 @@ def create_markup(call, category):
 
 def parser_for_olx(call):
     browser = webdriver.PhantomJS(executable_path='/Users/macbookpro/Downloads/phantomjs-2.1.1-macosx/bin/phantomjs')
+    browser.get('https://www.olx.ua/obyavlenie/matras-detskiy-matrasik-v-detskuyu-krovatku-IDKi8Ja.html?sd=1#f75cb84c20;promoted')
+    html = browser.page_source
     bot.answer_callback_query(call.id)
     main_request = requests.get(call.data)
     soup = BS(main_request.content, 'html.parser')
@@ -123,9 +125,8 @@ def parser_for_olx(call):
         if (dirty_ad.find('span', class_='delivery-badge') != None):
             link_to_ad = dirty_ad.find('a', class_='thumb').get('href')
             price = dirty_ad.find('p', class_='price').get_text(strip=True)
-            browser.get(link_to_ad)
-            soap = BS(browser.page_source, 'html.parser')
-            print(browser.page_source)
+            # html = get_html(link_to_ad)
+            soap = BS(html, 'html.parser')
             wh = soap.find('p', 'css-xl6fe0-Text')
             if(soap.find('p', 'css-xl6fe0-Text').get_text(strip=True) != 'Бизнес'):
                 user_name = soap.find('h2', 'css-owpmn2-Text').get_text(strip=True)
@@ -144,7 +145,10 @@ def parser_for_olx(call):
             # })
     bot.send_message(call.from_user.id, text=users)
 
-
+def get_html(link):
+    browser = webdriver.PhantomJS(executable_path='/Users/macbookpro/Downloads/phantomjs-2.1.1-macosx/bin/phantomjs')
+    browser.get('https://www.olx.ua/obyavlenie/matras-detskiy-matrasik-v-detskuyu-krovatku-IDKi8Ja.html?sd=1#f75cb84c20;promoted')
+    return browser.page_source
     # price = '',
     # user_name = '',
     # ads = '',
