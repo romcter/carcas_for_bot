@@ -113,9 +113,6 @@ def create_markup(call, category):
     bot.send_message(call.from_user.id, text="Выбери рубрику:", reply_markup=markup)
 
 def parser_for_olx(call):
-    browser = webdriver.PhantomJS(executable_path='/Users/macbookpro/Downloads/phantomjs-2.1.1-macosx/bin/phantomjs')
-    browser.get('https://www.olx.ua/obyavlenie/matras-detskiy-matrasik-v-detskuyu-krovatku-IDKi8Ja.html?sd=1#f75cb84c20;promoted')
-    html = browser.page_source
     bot.answer_callback_query(call.id)
     main_request = requests.get(call.data)
     soup = BS(main_request.content, 'html.parser')
@@ -125,14 +122,14 @@ def parser_for_olx(call):
         if (dirty_ad.find('span', class_='delivery-badge') != None):
             link_to_ad = dirty_ad.find('a', class_='thumb').get('href')
             price = dirty_ad.find('p', class_='price').get_text(strip=True)
-            # html = get_html(link_to_ad)
+            html = get_html(link_to_ad)
             soap = BS(html, 'html.parser')
-            wh = soap.find('p', 'css-xl6fe0-Text')
             if(soap.find('p', 'css-xl6fe0-Text').get_text(strip=True) != 'Бизнес'):
                 user_name = soap.find('h2', 'css-owpmn2-Text').get_text(strip=True)
                 link_to_profile = OLX_URL + soap.find('a', 'css-1qj8w5r').get('href')
-                browser.get(link_to_ad)
-                soip = BS(browser.page_source, 'html.parser')
+                html = get_html(link_to_profile)
+                soip = BS(html.page_source, 'html.parser')
+
             else:
                 print('Не часные объявления')
         else:
@@ -147,13 +144,9 @@ def parser_for_olx(call):
 
 def get_html(link):
     browser = webdriver.PhantomJS(executable_path='/Users/macbookpro/Downloads/phantomjs-2.1.1-macosx/bin/phantomjs')
-    browser.get('https://www.olx.ua/obyavlenie/matras-detskiy-matrasik-v-detskuyu-krovatku-IDKi8Ja.html?sd=1#f75cb84c20;promoted')
-    return browser.page_source
-    # price = '',
-    # user_name = '',
-    # ads = '',
-    # number = '',
-    # link_to_ad = ''
+    browser.get('https://www.olx.ua/d/obyavlenie/polska-kolyaska-tako-2-v-1-IDJYDKb.html?sd=1#f75cb84c20;promoted')
+    html = browser.page_source
+    return html
 
 # def return_user_html(users, diff=None):
 #     result = ''
