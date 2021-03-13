@@ -2,8 +2,13 @@ import telebot
 import requests
 from config import TELEGRAM_TOKEN
 from bs4 import BeautifulSoup as BS
+from selenium import webdriver
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
+
+OLX_URL = 'https://www.olx.ua'
+AVITO_URL = 'https://www.avito.ru'
+YOULA_URL = 'https://youla.ru'
 
 HEADER = {
     'accept': '*/*',
@@ -86,18 +91,18 @@ def start(message):
 
 @bot.callback_query_handler(func=lambda call: True)
 def query_handler(call):
-    if call.data == "https://www.olx.ua/":
+    if call.data == OLX_URL:
         create_markup(call, category_for_olx)
-    elif call.data == "https://www.avito.ru/rossiya":
+    elif call.data == AVITO_URL:
         create_markup(call, category_for_avito)
-    elif call.data == "https://youla.ru/":
+    elif call.data == YOULA_URL:
         create_markup(call, category_for_youla)
-    elif 'https://www.olx.ua/' in call.data:
-        parser_for_olx(call.data)
-    elif 'https://www.avito.ru/rossiya' in call.data:
-        parser_for_avito(call.data)
-    elif 'https://youla.ru/' in call.data:
-        parser_for_youla(call.data)
+    elif OLX_URL in call.data:
+        parser_for_olx(call)
+    elif AVITO_URL in call.data:
+        parser_for_avito(call)
+    elif YOULA_URL in call.data:
+        parser_for_youla(call)
     else:
         pass
 
@@ -107,17 +112,59 @@ def create_markup(call, category):
         markup.add(telebot.types.InlineKeyboardButton(text=el.name, callback_data=el.url))
     bot.send_message(call.from_user.id, text="Выбери рубрику:", reply_markup=markup)
 
-def parser_for_olx(olx_category_url):
-    main_request = requests.get(olx_category_url)
+def parser_for_olx(call):
+    browser = webdriver.PhantomJS(executable_path='/Users/macbookpro/Downloads/phantomjs-2.1.1-macosx/bin/phantomjs')
+    bot.answer_callback_query(call.id)
+    main_request = requests.get(call.data)
     soup = BS(main_request.content, 'html.parser')
     ads_not_sorted = soup.find_all('tr', class_='wrap')
     users = []
-    for ad_html in ads_not_sorted:
-        if (ad_html.find('span', class_='delivery-badge') != None):
-            link_to_ad = ad_html.find('a', class_='thumb').get('href')
-            price = ad_html.find('p', class_='price').get_text(strip=True)
-            users.append(User(link_to_ad, price))
-    print(users)
+    for dirty_ad in ads_not_sorted:
+        if (dirty_ad.find('span', class_='delivery-badge') != None):
+            link_to_ad = dirty_ad.find('a', class_='thumb').get('href')
+            price = dirty_ad.find('p', class_='price').get_text(strip=True)
+            browser.get(link_to_ad)
+            soap = BS(browser.page_source, 'html.parser')
+            print(browser.page_source)
+            wh = soap.find('p', 'css-xl6fe0-Text')
+            if(soap.find('p', 'css-xl6fe0-Text').get_text(strip=True) != 'Бизнес'):
+                user_name = soap.find('h2', 'css-owpmn2-Text').get_text(strip=True)
+                link_to_profile = OLX_URL + soap.find('a', 'css-1qj8w5r').get('href')
+                browser.get(link_to_ad)
+                soip = BS(browser.page_source, 'html.parser')
+            else:
+                print('Не часные объявления')
+        else:
+            print("Не подключена безопасная сделка")
+
+
+            # users.append({
+            #     'link_to_ad': ad_html.find('a', class_='thumb').get('href'),
+            #     'price': ad_html.find('p', class_='price').get_text(strip=True)
+            # })
+    bot.send_message(call.from_user.id, text=users)
+
+
+    # price = '',
+    # user_name = '',
+    # ads = '',
+    # number = '',
+    # link_to_ad = ''
+
+# def return_user_html(users, diff=None):
+#     result = ''
+#     for el in users:
+#         result + '<b>' + el['user_name'] +
+
+
+
+
+
+
+
+
+
+
 
 def parser_for_avito(avito_category_url):
     main_request = requests.get(avito_category_url)
