@@ -5,6 +5,10 @@ from bs4 import BeautifulSoup as BS
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
+HEADER = {
+    'accept': '*/*',
+    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36'
+}
 
 class Site:
     name = "",
@@ -14,7 +18,6 @@ class Site:
         self.name = name
         self.url = url
 
-
 class Category:
     name = '',
     url = ''
@@ -23,19 +26,23 @@ class Category:
         self.name = name
         self.url = url
 
-class Mamont:
-    safe_deal = False,
-    ads = 0,
-    business_account = False
+class User:
+    price = '',
+    user_name = '',
+    ads = '',
     number = '',
     link_to_ad = ''
 
-    def __init__(self, safe_deal, ads, business_account, number, link_to_ad):
-        self.safe_deal = safe_deal
-        self.ads = ads
-        self.business_account = business_account
-        self.number = number
+    def __init__(self, price, link_to_ad):
+        self.price = price
         self.link_to_ad = link_to_ad
+
+    # def __init__(self, price, user_name, ads, number, link_to_ad):
+    #     self.price = price
+    #     self.user_name = user_name
+    #     self.ads = ads
+    #     self.number = number
+    #     self.link_to_ad = link_to_ad
 
 site = [Site("Avito", 'https://www.avito.ru/rossiya'), Site("Olx", 'https://www.olx.ua/'),
         Site("Youla", 'https://youla.ru/')]
@@ -68,13 +75,13 @@ category_for_youla = [Category('Женская одежда', 'https://youla.ru/
                       Category('Детские товары', 'https://youla.ru/all/detskie'),
                       Category('Мужская одежда', 'https://youla.ru/all/muzhskaya-odezhda')]
 
-
 @bot.message_handler(content_types=['text'])
 def start(message):
     markup = telebot.types.InlineKeyboardMarkup()
     for el in site:
         markup.add(telebot.types.InlineKeyboardButton(text=el.name, callback_data=el.url))
     bot.send_message(message.chat.id, text="Выбери сайт:", reply_markup=markup)
+
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -85,11 +92,14 @@ def query_handler(call):
         create_markup(call, category_for_avito)
     elif call.data == "https://youla.ru/":
         create_markup(call, category_for_youla)
+    elif 'https://www.olx.ua/' in call.data:
+        parser_for_olx(call.data)
+    elif 'https://www.avito.ru/rossiya' in call.data:
+        parser_for_avito(call.data)
     elif 'https://youla.ru/' in call.data:
         parser_for_youla(call.data)
     else:
         pass
-
 
 def create_markup(call, category):
     markup = telebot.types.InlineKeyboardMarkup()
@@ -97,13 +107,41 @@ def create_markup(call, category):
         markup.add(telebot.types.InlineKeyboardButton(text=el.name, callback_data=el.url))
     bot.send_message(call.from_user.id, text="Выбери рубрику:", reply_markup=markup)
 
-
 def parser_for_olx(olx_category_url):
-    pass
-
+    main_request = requests.get(olx_category_url)
+    soup = BS(main_request.content, 'html.parser')
+    ads_not_sorted = soup.find_all('tr', class_='wrap')
+    users = []
+    for ad_html in ads_not_sorted:
+        if (ad_html.find('span', class_='delivery-badge') != None):
+            link_to_ad = ad_html.find('a', class_='thumb').get('href')
+            price = ad_html.find('p', class_='price').get_text(strip=True)
+            users.append(User(link_to_ad, price))
+    print(users)
 
 def parser_for_avito(avito_category_url):
-    pass
+    main_request = requests.get(avito_category_url)
+    soup = BS(main_request.content, 'html.parser')
+    ads = soup.findAll('div', class_='iva-item-body-NPl6W')
+    for ad in ads:
+        link_to_ad = 'https://www.avito.ru' + ad.contents[1].contents[0].attrs['href']
+        price = ad.contents[2].contents[0].text
+        ad_request = requests.get(link_to_ad, headers=HEADER)
+        soap = BS(ad_request.content, 'html.parser')
+
+        user_names = soap.findAll('a')
+        часные_ли_объявы = soap.find('div', class_='seller-info/label')
+        user_namez = soap.find('a', class_='button-size-s-3-rn6')
+        user_namex = soap.find('a', class_='button-default-mSfac')
+        user_namce = soap.find('a', class_='width-width-12-2VZLz')
+        user_name = soap.find('div', class_='seller-info-name').contents[1].text
+        user_link = soap.find('div', class_='seller-info-name').contents[1].attrs['href']
+        ad_request = requests.get(user_link)
+        souup = BS(ad_request.content, 'html.parser')
+        span = souup.find('span', class_='public-profile-tab(active)')
+
+        user = User(link_to_ad, price, user_name, count_ads)
+        print(user)
 
 
 def parser_for_youla(youla_category_url):
@@ -113,13 +151,18 @@ def parser_for_youla(youla_category_url):
         link_to_ad = 'https://youla.ru' + el.contents[0].attrs['href']
         request_to_ad = requests.get(youla_category_url)
         soup = BS(request_to_ad.content, 'html.parser')
-        ads = soup.select('#app.sc-psedN.dyhZUV')
-        # for element in ad_html.select('#app .sc-pAYia.ceKQHP'):
-        #     ads = element
+        ads = soup.find('span', class_='sc-psedN')
         safe_deal = el.contents[0].attrs['href']
         business_account = el.select('.subcategories-list clr')
         number = el.select('.subcategories-list clr')
-        Mamont(safe_deal, ads, business_account, number, link_to_ad)
+        User(safe_deal, ads, business_account, number, link_to_ad)
+
 
 if __name__ == '__main__':
     bot.polling(none_stop=True, interval=0)
+
+
+# ad_link = requests.get(link_to_ad)
+#             soap = BS(ad_link.content, 'html.parser')
+#             test = soap.find('p', class_='css-xl6fe0-Text').get_text(strip=True)
+#             if(soap.find('p', class_='css-xl6fe0-Text').get_text(strip=True) == 'Частное лицо'):
