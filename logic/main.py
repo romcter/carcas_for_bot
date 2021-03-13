@@ -15,6 +15,7 @@ HEADER = {
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36'
 }
 
+
 class Site:
     name = "",
     url = ""
@@ -23,6 +24,7 @@ class Site:
         self.name = name
         self.url = url
 
+
 class Category:
     name = '',
     url = ''
@@ -30,6 +32,7 @@ class Category:
     def __init__(self, name, url):
         self.name = name
         self.url = url
+
 
 class User:
     price = '',
@@ -48,6 +51,7 @@ class User:
     #     self.ads = ads
     #     self.number = number
     #     self.link_to_ad = link_to_ad
+
 
 site = [Site("Avito", 'https://www.avito.ru/rossiya'), Site("Olx", 'https://www.olx.ua/'),
         Site("Youla", 'https://youla.ru/')]
@@ -80,13 +84,13 @@ category_for_youla = [Category('Женская одежда', 'https://youla.ru/
                       Category('Детские товары', 'https://youla.ru/all/detskie'),
                       Category('Мужская одежда', 'https://youla.ru/all/muzhskaya-odezhda')]
 
+
 @bot.message_handler(content_types=['text'])
 def start(message):
     markup = telebot.types.InlineKeyboardMarkup()
     for el in site:
         markup.add(telebot.types.InlineKeyboardButton(text=el.name, callback_data=el.url))
     bot.send_message(message.chat.id, text="Выбери сайт:", reply_markup=markup)
-
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -106,65 +110,59 @@ def query_handler(call):
     else:
         pass
 
+
 def create_markup(call, category):
     markup = telebot.types.InlineKeyboardMarkup()
     for el in category:
         markup.add(telebot.types.InlineKeyboardButton(text=el.name, callback_data=el.url))
     bot.send_message(call.from_user.id, text="Выбери рубрику:", reply_markup=markup)
 
+
 def parser_for_olx(call):
     bot.answer_callback_query(call.id)
-    main_request = requests.get(call.data)
-    soup = BS(main_request.content, 'html.parser')
-    ads_not_sorted = soup.find_all('tr', class_='wrap')
+    main_request = requests.get(call.data, headers=HEADER).content
+    soup = BS(main_request, 'lxml')
+    new_ads = soup.find_all('tr', class_='wrap')
     users = []
-    for dirty_ad in ads_not_sorted:
-        if (dirty_ad.find('span', class_='delivery-badge') != None):
-            link_to_ad = dirty_ad.find('a', class_='thumb').get('href')
-            price = dirty_ad.find('p', class_='price').get_text(strip=True)
-            html = get_html(link_to_ad)
-            soap = BS(html, 'html.parser')
-            if(soap.find('p', 'css-xl6fe0-Text').get_text(strip=True) != 'Бизнес'):
-                user_name = soap.find('h2', 'css-owpmn2-Text').get_text(strip=True)
-                link_to_profile = OLX_URL + soap.find('a', 'css-1qj8w5r').get('href')
-                html = get_html(link_to_profile)
-                soip = BS(html.page_source, 'html.parser')
-
+    for new_ad in new_ads:
+        try:
+            if (new_ad.find('span', class_='delivery-badge') != None):
+                link_to_ad = new_ad.find('a', class_='thumb').get('href')
+                price = new_ad.find('p', class_='price').get_text(strip=True)
+                ad_request = requests.get(link_to_ad, headers=HEADER).content
+                soap = BS(ad_request, 'lxml')
+                if (soap.find('strong', 'offer-details__value').get_text(strip=True) != 'Бизнес'):
+                    user_name = soap.find('div', 'quickcontact__user-name').get_text(strip=True)
+                    link_to_profile = soap.find('a', 'quickcontact__image-link').get('href')
+                    html = requests.get(link_to_profile, headers=HEADER).content
+                    soip = BS(html, 'html.parser')
+                    ads = str(len(soip.find_all('tr', 'wrap')))
+                    users.append({
+                        'link_to_ad': link_to_ad,
+                        'price': price,
+                        'ads': ads,
+                        'user_name': user_name
+                    })
+                else:
+                    print('Бизнес акаунт')
             else:
                 print('Не часные объявления')
-        else:
-            print("Не подключена безопасная сделка")
+        except:
+            print('Что то пошло не так')
+    for el in users:
+        bot.send_message(call.from_user.id, text=el, parse_mode='HTML')
 
 
-            # users.append({
-            #     'link_to_ad': ad_html.find('a', class_='thumb').get('href'),
-            #     'price': ad_html.find('p', class_='price').get_text(strip=True)
-            # })
-    bot.send_message(call.from_user.id, text=users)
-
-def get_html(link):
-    browser = webdriver.PhantomJS(executable_path='/Users/macbookpro/Downloads/phantomjs-2.1.1-macosx/bin/phantomjs')
-    browser.get('https://www.olx.ua/d/obyavlenie/polska-kolyaska-tako-2-v-1-IDJYDKb.html?sd=1#f75cb84c20;promoted')
-    html = browser.page_source
-    return html
-
-# def return_user_html(users, diff=None):
-#     result = ''
-#     for el in users:
-#         result + '<b>' + el['user_name'] +
-
-
-
-
-
-
-
-
-
+def return_user_html(users, diff=None):
+    result = ''
+    for el in users:
+        result += '<b>Имя: '+el['user_name']+'</b>\n<b>Ссылка: '+el['link_to_ad']+'</b>\n' \
+                                        '<b>Цена: '+el['price']+'</b>\n<b>Количество объявлений: '+el['ads']+'</b>\n'
+    return result
 
 
 def parser_for_avito(avito_category_url):
-    main_request = requests.get(avito_category_url)
+    main_request = requests.get(avito_category_url, headers=HEADER)
     soup = BS(main_request.content, 'html.parser')
     ads = soup.findAll('div', class_='iva-item-body-NPl6W')
     for ad in ads:
@@ -204,9 +202,3 @@ def parser_for_youla(youla_category_url):
 
 if __name__ == '__main__':
     bot.polling(none_stop=True, interval=0)
-
-
-# ad_link = requests.get(link_to_ad)
-#             soap = BS(ad_link.content, 'html.parser')
-#             test = soap.find('p', class_='css-xl6fe0-Text').get_text(strip=True)
-#             if(soap.find('p', class_='css-xl6fe0-Text').get_text(strip=True) == 'Частное лицо'):
