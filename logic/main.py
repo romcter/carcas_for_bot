@@ -2,7 +2,7 @@ import telebot
 import requests
 from config import TELEGRAM_TOKEN
 from bs4 import BeautifulSoup as BS
-from selenium import webdriver
+import json
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
@@ -34,27 +34,8 @@ class Category:
         self.url = url
 
 
-class User:
-    price = '',
-    user_name = '',
-    ads = '',
-    number = '',
-    link_to_ad = ''
-
-    def __init__(self, price, link_to_ad):
-        self.price = price
-        self.link_to_ad = link_to_ad
-
-    # def __init__(self, price, user_name, ads, number, link_to_ad):
-    #     self.price = price
-    #     self.user_name = user_name
-    #     self.ads = ads
-    #     self.number = number
-    #     self.link_to_ad = link_to_ad
-
-
-site = [Site("Avito", 'https://www.avito.ru/rossiya'), Site("Olx", 'https://www.olx.ua/'),
-        Site("Youla", 'https://youla.ru/')]
+site = [Site("Avito", AVITO_URL), Site("Olx", OLX_URL),
+        Site("Youla", YOULA_URL)]
 
 category_for_olx = [Category('Детский мир', 'https://www.olx.ua/detskiy-mir/'),
                     Category('Запчасти для транспорта', 'https://www.olx.ua/zapchasti-dlya-transporta/'),
@@ -124,80 +105,111 @@ def parser_for_olx(call):
     soup = BS(main_request, 'lxml')
     new_ads = soup.find_all('tr', class_='wrap')
     users = []
-    for new_ad in new_ads:
-        try:
-            if (new_ad.find('span', class_='delivery-badge') != None):
-                link_to_ad = new_ad.find('a', class_='thumb').get('href')
-                price = new_ad.find('p', class_='price').get_text(strip=True)
-                ad_request = requests.get(link_to_ad, headers=HEADER).content
-                soap = BS(ad_request, 'lxml')
-                if (soap.find('strong', 'offer-details__value').get_text(strip=True) != 'Бизнес'):
-                    user_name = soap.find('div', 'quickcontact__user-name').get_text(strip=True)
-                    link_to_profile = soap.find('a', 'quickcontact__image-link').get('href')
-                    html = requests.get(link_to_profile, headers=HEADER).content
-                    soip = BS(html, 'html.parser')
-                    ads = str(len(soip.find_all('tr', 'wrap')))
-                    users.append({
-                        'link_to_ad': link_to_ad,
-                        'price': price,
-                        'ads': ads,
-                        'user_name': user_name
-                    })
+    if (len(new_ads) > 0):
+        for new_ad in new_ads:
+            try:
+                if (new_ad.find('span', class_='delivery-badge') != None):
+                    link_to_ad = new_ad.find('a', class_='thumb').get('href')
+                    price = new_ad.find('p', class_='price').get_text(strip=True)
+                    ad_request = requests.get(link_to_ad, headers=HEADER).content
+                    soap = BS(ad_request, 'lxml')
+                    if (soap.find('strong', class_='offer-details__value').get_text(strip=True) != 'Бизнес'):
+                        user_name = soap.find('div', 'quickcontact__user-name').get_text(strip=True)
+                        link_to_profile = soap.find('a', 'quickcontact__image-link').get('href')
+                        html = requests.get(link_to_profile, headers=HEADER).content
+                        soip = BS(html, 'html.parser')
+                        ads = str(len(soip.find_all('tr', 'wrap')))
+                        users.append({
+                            'link_to_ad': link_to_ad,
+                            'price': price,
+                            'ads': ads,
+                            'user_name': user_name
+                        })
+                    else:
+                        print('Бизнес акаунт')
                 else:
-                    print('Бизнес акаунт')
-            else:
-                print('Не часные объявления')
-        except:
-            print('Что то пошло не так')
-    for el in users:
-        bot.send_message(call.from_user.id, text=el, parse_mode='HTML')
+                    print('Не часные объявления')
+            except:
+                print('Что то пошло не так')
+        for el in users:
+            bot.send_message(call.from_user.id, text=return_user_html(el), parse_mode='HTML')
+    else:
+        bot.send_message(call.from_user.id, text='Что то с площадкой, поменяй сайт', parse_mode='HTML')
 
 
-def return_user_html(users, diff=None):
-    result = ''
+def parser_for_avito(call):
+    bot.answer_callback_query(call.id)
+    main_request = requests.get(call.data, headers=HEADER).content
+    soup = BS(main_request, 'lxml')
+    new_ads = soup.find_all('div', class_='iva-item-root-G3n7v')
+    if (len(new_ads) > 0):
+        users = []
+        for new_ad in new_ads:
+            print('start')
+            try:
+                if (new_ad.find('div', class_='delivery-icon-root-1WkFb') != None):
+                    link_to_ad = AVITO_URL + new_ad.find('a', class_='iva-item-sliderLink-2hFV_').get('href')
+                    price = new_ad.find('span', class_='price-text-1HrJ_').get_text(strip=True)
+                    ad_request = requests.get(link_to_ad, headers=HEADER).content
+                    soap = BS(ad_request, 'lxml')
+                    if (soap.find('div', {'data-marker': 'seller-info/label'}).get_text(strip=True) == 'Частное лицо'):
+                        user_name = soap.find('div', 'seller-info-name').get_text(strip=True)
+                        link_to_profile = soap.find('a', 'seller-info-avatar-image').get('href')
+                        hz = link_to_profile.split("/")[4]
+                        req = 'https://www.avito.ru/web/1/profile/public/items?hashUserId=' + hz + '&shortcut=active'
+                        profile_html = requests.get(req, headers=HEADER).content
+                        ads = len(json.loads(profile_html)['result']['list'])
+                        users.append({
+                            'link_to_ad': link_to_ad,
+                            'price': price,
+                            'ads': ads,
+                            'user_name': user_name
+                        })
+                    else:
+                        print('Бизнес акаунт')
+                else:
+                    print('Не часные объявления')
+            except:
+                print('Что то пошло не так')
+        for el in users:
+            bot.send_message(call.from_user.id, text=return_user_html(el), parse_mode='HTML')
+    else:
+        bot.send_message(call.from_user.id, text='Что то с площадкой, поменяй сайт', parse_mode='HTML')
+
+
+def parser_for_youla(call):
+    bot.answer_callback_query(call.id)
+    main_request = requests.get(call.data, headers=HEADER).content
+    soup = BS(main_request, 'lxml')
+    new_ads = soup.find_all('li', class_='product_item')
+    users = []
+    for new_ad in new_ads:
+        if (new_ad.find('span', class_='status_badge__icon') != None):
+            link_to_ad = YOULA_URL + new_ad.contents[0].get('href')
+            price = new_ad.find('div', class_='product_item__description').contents[0].get_text(strip=True)
+            ad_request = requests.get(link_to_ad, headers=HEADER).content
+            hz = json.loads(ad_request)
+            print(ad_request.decode())
+            # soap = BS(ad_request, 'lxml')
+            # user_name = soap.find('span', class_='sc-pDabv')
+            # ads = soap.find('span', class_='sc-pDabv')
+            # users.append({
+            #     'link_to_ad': link_to_ad,
+            #     'price': price,
+            #     'ads': ads,
+            #     'user_name': user_name
+            # })
+    else:
+        print('Не часные объявления')
     for el in users:
-        result += '<b>Имя: '+el['user_name']+'</b>\n<b>Ссылка: '+el['link_to_ad']+'</b>\n' \
-                                        '<b>Цена: '+el['price']+'</b>\n<b>Количество объявлений: '+el['ads']+'</b>\n'
+        bot.send_message(call.from_user.id, text=return_user_html(el), parse_mode='HTML')
+
+
+def return_user_html(user, diff=None):
+    result = '<b>Имя: ' + user['user_name'] + '</b>\n<b>Ссылка: ' + user['link_to_ad'] + '</b>\n' \
+                                                                                         '<b>Цена: ' + user[
+                 'price'] + '</b>\n<b>Количество объявлений: ' + user['ads'] + '</b>\n'
     return result
-
-
-def parser_for_avito(avito_category_url):
-    main_request = requests.get(avito_category_url, headers=HEADER)
-    soup = BS(main_request.content, 'html.parser')
-    ads = soup.findAll('div', class_='iva-item-body-NPl6W')
-    for ad in ads:
-        link_to_ad = 'https://www.avito.ru' + ad.contents[1].contents[0].attrs['href']
-        price = ad.contents[2].contents[0].text
-        ad_request = requests.get(link_to_ad, headers=HEADER)
-        soap = BS(ad_request.content, 'html.parser')
-
-        user_names = soap.findAll('a')
-        часные_ли_объявы = soap.find('div', class_='seller-info/label')
-        user_namez = soap.find('a', class_='button-size-s-3-rn6')
-        user_namex = soap.find('a', class_='button-default-mSfac')
-        user_namce = soap.find('a', class_='width-width-12-2VZLz')
-        user_name = soap.find('div', class_='seller-info-name').contents[1].text
-        user_link = soap.find('div', class_='seller-info-name').contents[1].attrs['href']
-        ad_request = requests.get(user_link)
-        souup = BS(ad_request.content, 'html.parser')
-        span = souup.find('span', class_='public-profile-tab(active)')
-
-        user = User(link_to_ad, price, user_name, count_ads)
-        print(user)
-
-
-def parser_for_youla(youla_category_url):
-    main_request = requests.get(youla_category_url)
-    main_html = BS(main_request.content, 'html.parser')
-    for el in main_html.select('#app .product_section .product_item'):
-        link_to_ad = 'https://youla.ru' + el.contents[0].attrs['href']
-        request_to_ad = requests.get(youla_category_url)
-        soup = BS(request_to_ad.content, 'html.parser')
-        ads = soup.find('span', class_='sc-psedN')
-        safe_deal = el.contents[0].attrs['href']
-        business_account = el.select('.subcategories-list clr')
-        number = el.select('.subcategories-list clr')
-        User(safe_deal, ads, business_account, number, link_to_ad)
 
 
 if __name__ == '__main__':
