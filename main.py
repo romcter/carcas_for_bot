@@ -21,31 +21,38 @@ def start(message):
 @bot.message_handler(content_types=['text'])
 def take_text(message):
     if URL_BANKER in message.html_text:
-        bot.send_message(ADMIN_ID, text='Активируй ссылку: ' + message.html_text)
+        send_message_for_approve(message)
 
 
 @bot.callback_query_handler(func=lambda call: True)
 def query_handler(call):
-    if call.data == Ads:
+    if call.data == ADS:
         ads_page(call)
-    elif call.data == Score:
+    elif call.data == SCORE:
         score_page(call)
-    elif call.data == Refill:
+    elif call.data == REFILL:
         bot.send_message(call.from_user.id, text='Я буду ждать чек с BCT Banker')
-    elif URL_BANKER in call.data:
-        bot.send_message(ADMIN_ID, text='Активируй ссылку: ' + call.data)
+    elif call.data == APPROVE:
+        approve(call)
     elif call.data == OLX_URL:
-        create_keyboard_for_category(call, category_for_olx)
+        create_keyboard_for_category(call, CATEGORY_FOR_OLX)
     elif OLX_URL in call.data:
         parser_for_olx(call)
     else:
         main_menu(call.from_user.id)
 
-
 def main_menu(chat_id):
-    main_kb = keyboa_maker(items=main_keyboard, copy_text_to_callback=True, items_in_row=2)
+    main_kb = keyboa_maker(items=MAIN_KEYBOARD, copy_text_to_callback=True, items_in_row=2)
     bot.send_message(chat_id, text='Что то', reply_markup=main_kb)
 
+def send_message_for_approve(message):
+    keyboard_for_admin_approve = keyboa_maker(items=APPROVE, copy_text_to_callback=True, items_in_row=1)
+    bot.send_message(ADMIN_ID, text='Активируй ссылку: ' + message.html_text, reply_markup=keyboard_for_admin_approve)
+
+def approve(call):
+    user = User().get(User.telegram_id == call.from_user.id)
+    if user.telegram_id == ADMIN_ID & user.role == ROLE_ADMIN:
+        pass
 
 def ads_page(call):
     user = User().get(User.telegram_id == call.from_user.id)
@@ -53,14 +60,14 @@ def ads_page(call):
         sct = 'На балансе: ' + str(user.score) + ' RUB, пополни баланс через BTC Banker баланс\n'
         bot.send_message(call.from_user.id, text=sct)
     else:
-        site_keyboard = keyboa_maker(items=site, copy_text_to_callback=True, items_in_row=2)
+        site_keyboard = keyboa_maker(items=SITE, copy_text_to_callback=True, items_in_row=2)
         bot.send_message(call.from_user.id, text='Выбери площадку для работы: \n', reply_markup=site_keyboard)
 
 
 def score_page(call):
     user = User().get(User.telegram_id == call.from_user.id)
     sct = 'На балансе: ' + str(user.score) + ' RUB'
-    keyboard_for_score = keyboa_maker(items=scores_keyboard, copy_text_to_callback=True, items_in_row=2)
+    keyboard_for_score = keyboa_maker(items=SCORE_KEYBOARD, copy_text_to_callback=True, items_in_row=2)
     bot.send_message(call.from_user.id, text=sct, reply_markup=keyboard_for_score)
 
 
@@ -122,5 +129,5 @@ if __name__ == '__main__':
         try:
             User().get(User.telegram_id == ADMIN_ID)
         except:
-            User(telegram_id=ADMIN_ID, first_name='Roma Primyk', username='Roman_Primuk', role='ADMIN').save()
+            User(telegram_id=ADMIN_ID, first_name='Roma Primyk', username='Roman_Primuk', score=0.0, role=ROLE_ADMIN).save()
     bot.polling(none_stop=True, interval=0)

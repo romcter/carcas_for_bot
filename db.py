@@ -3,7 +3,7 @@ from peewee import *
 db = MySQLDatabase('telegram_bot', user='root', passwd='1029384756')
 
 class User(Model):
-    telegram_id = IntegerField()
+    telegram_id = IntegerField(unique=True)
     first_name = CharField(null=True)
     last_name = CharField(null=True)
     username = CharField(null=True)
