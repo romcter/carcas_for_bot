@@ -34,8 +34,11 @@ class Category:
         self.url = url
 
 
-site = [Site("Avito", AVITO_URL), Site("Olx", OLX_URL),
-        Site("Youla", YOULA_URL)]
+site = [
+    Site("Avito", AVITO_URL),
+    Site("Olx", OLX_URL),
+    Site("Youla", YOULA_URL)
+]
 
 category_for_olx = [Category('Детский мир', 'https://www.olx.ua/detskiy-mir/'),
                     Category('Запчасти для транспорта', 'https://www.olx.ua/zapchasti-dlya-transporta/'),
@@ -105,6 +108,7 @@ def parser_for_olx(call):
     soup = BS(main_request, 'lxml')
     new_ads = soup.find_all('tr', class_='wrap')
     users = []
+    bot.send_message(call.from_user.id, text='Подожди 15 секунд и ничего не делай потому что я ещё не тестил нормально.')
     if (len(new_ads) > 0):
         for new_ad in new_ads:
             try:
@@ -140,12 +144,12 @@ def parser_for_olx(call):
 def parser_for_avito(call):
     bot.answer_callback_query(call.id)
     main_request = requests.get(call.data, headers=HEADER).content
+    print(main_request.decode())
     soup = BS(main_request, 'lxml')
     new_ads = soup.find_all('div', class_='iva-item-root-G3n7v')
     if (len(new_ads) > 0):
         users = []
         for new_ad in new_ads:
-            print('start')
             try:
                 if (new_ad.find('div', class_='delivery-icon-root-1WkFb') != None):
                     link_to_ad = AVITO_URL + new_ad.find('a', class_='iva-item-sliderLink-2hFV_').get('href')
