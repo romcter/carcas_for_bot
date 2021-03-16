@@ -2,6 +2,7 @@ import telebot
 import requests
 from config import TELEGRAM_TOKEN
 from bs4 import BeautifulSoup as BS
+from keyboa import keyboa_maker
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
@@ -13,46 +14,37 @@ HEADER = {
 }
 
 site = [
-    {'name': "Olx", 'url': OLX_URL}
+    {"Olx": OLX_URL}
 ]
 
 category_for_olx = [
-    {'name': 'Детский мир', 'url': 'https://www.olx.ua/detskiy-mir/'},
-    {'name': 'Запчасти для транспорта', 'url': 'https://www.olx.ua/zapchasti-dlya-transporta/'},
-    {'name': 'Дом и сад', 'url': 'https://www.olx.ua/dom-i-sad/'},
-    {'name': 'Електроника', 'url': 'https://www.olx.ua/elektronika/'},
-    {'name': 'Мода и стиль', 'url': 'https://www.olx.ua/moda-i-stil/'},
-    {'name': 'Хобби, отдых и спорт', 'url': 'https://www.olx.ua/hobbi-otdyh-i-sport/'}
+    {'Детский мир': 'https://www.olx.ua/detskiy-mir/'},
+    {'Запчасти для транспорта': 'https://www.olx.ua/zapchasti-dlya-transporta/'},
+    {'Дом и сад': 'https://www.olx.ua/dom-i-sad/'},
+    {'Електроника': 'https://www.olx.ua/elektronika/'},
+    {'Мода и стиль': 'https://www.olx.ua/moda-i-stil/'},
+    {'Хобби, отдых и спорт': 'https://www.olx.ua/hobbi-otdyh-i-sport/'}
 ]
 
 @bot.message_handler(content_types=['text'])
 def start(message):
-    markup = telebot.types.InlineKeyboardMarkup()
-    markup.row(telebot.types.InlineKeyboardButton(text=site[0]['name'], callback_data=site[0]['url']))
-    bot.send_message(message.chat.id, text="Выбери сайт:", reply_markup=markup)
+    keyboard_for_site = keyboa_maker(items=site, items_in_row=2)
+    bot.send_message(message.chat.id, text="Выбери сайт:", reply_markup=keyboard_for_site)
 
 
 @bot.callback_query_handler(func=lambda call: True)
 def query_handler(call):
     if call.data == OLX_URL:
-        category_markup_for_olx(call)
+        create_keyboard_for_category(call, category_for_olx)
     elif OLX_URL in call.data:
         parser_for_olx(call)
     else:
         pass
 
 
-def category_markup_for_olx(call):
-    markup = telebot.types.InlineKeyboardMarkup()
-    markup.row(
-        telebot.types.InlineKeyboardButton(text=category_for_olx[0]['name'], callback_data=category_for_olx[0]['url']),
-        telebot.types.InlineKeyboardButton(text=category_for_olx[1]['name'], callback_data=category_for_olx[1]['url']),
-        telebot.types.InlineKeyboardButton(text=category_for_olx[2]['name'], callback_data=category_for_olx[2]['url']))
-    markup.row(
-        telebot.types.InlineKeyboardButton(text=category_for_olx[3]['name'], callback_data=category_for_olx[3]['url']),
-        telebot.types.InlineKeyboardButton(text=category_for_olx[4]['name'], callback_data=category_for_olx[4]['url']),
-        telebot.types.InlineKeyboardButton(text=category_for_olx[5]['name'], callback_data=category_for_olx[5]['url']))
-    bot.send_message(call.from_user.id, text="Выбери рубрику:", reply_markup=markup)
+def create_keyboard_for_category(call, category):
+    keyboard_for_category = keyboa_maker(items=category, items_in_row=2)
+    bot.send_message(call.from_user.id, text="Выбери рубрику:", reply_markup=keyboard_for_category)
 
 
 def parser_for_olx(call):
