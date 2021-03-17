@@ -8,7 +8,10 @@ class User(Model):
     last_name = CharField(null=True)
     username = CharField(null=True)
     score = FloatField(default=0.0)
-    procent = IntegerField(default=10)
+    percent = IntegerField(default=10)
+    filter_by_safe_ads = BooleanField(default=True)
+    filter_by_business = BooleanField(default=True)
+    filter_by_all_ads = BooleanField(default=True)
     role = CharField()
 
     class Meta:
