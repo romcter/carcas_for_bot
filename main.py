@@ -10,7 +10,7 @@ bot = telebot.TeleBot(TELEGRAM_TOKEN)
 @bot.message_handler(commands=['start'])
 def start(message):
     try:
-        User().get(User.id(message.chat.id))
+        User().get(User.telegram_id == message.chat.id)
     except:
         with db:
             User(telegram_id=message.chat.id, first_name=message.chat.first_name, last_name=message.chat.last_name,
@@ -28,12 +28,14 @@ def take_text(message):
 def query_handler(call):
     if call.data == ADS:
         ads_page(call)
+    #Score
     elif call.data == SCORE:
         score_page(call)
     elif call.data == REFILL:
-        bot.send_message(call.from_user.id, text='Я буду ждать чек с BCT Banker')
-    elif call.data == APPROVE:
+        bot.send_message(call.from_user.id, text='Отправь мне чек с BCT Banker и я зачислю тебе деньги')
+    elif APPROVE in call.data:
         approve(call)
+    #Parsing
     elif call.data == OLX_URL:
         create_keyboard_for_category(call, CATEGORY_FOR_OLX)
     elif OLX_URL in call.data:
@@ -43,16 +45,28 @@ def query_handler(call):
 
 def main_menu(chat_id):
     main_kb = keyboa_maker(items=MAIN_KEYBOARD, copy_text_to_callback=True, items_in_row=2)
-    bot.send_message(chat_id, text='Что то', reply_markup=main_kb)
+    bot.send_message(chat_id, text='Куда дальше?\n', reply_markup=main_kb)
 
 def send_message_for_approve(message):
-    keyboard_for_admin_approve = keyboa_maker(items=APPROVE, copy_text_to_callback=True, items_in_row=1)
-    bot.send_message(ADMIN_ID, text='Активируй ссылку: ' + message.html_text, reply_markup=keyboard_for_admin_approve)
+    keyboard_for_approve = telebot.types.InlineKeyboardMarkup()
+    bot.forward_message(ADMIN_ID, message.chat.id, message.id)
+    keyboard_for_approve.add(telebot.types.InlineKeyboardButton(text=APPROVE, callback_data=APPROVE + str(message.chat.id)))
+    bot.send_message(ADMIN_ID, text='Активируй ссылку: ' + message.html_text, reply_markup=keyboard_for_approve)
 
 def approve(call):
-    user = User().get(User.telegram_id == call.from_user.id)
-    if user.telegram_id == ADMIN_ID & user.role == ROLE_ADMIN:
-        pass
+    user_admin = User().get(User.telegram_id == call.from_user.id)
+    if (user_admin.telegram_id == ADMIN_ID) & (user_admin.role == ROLE_ADMIN):
+        bot.send_message(ADMIN_ID, text='Отправь сообщение с поддтверждением \n')
+        bot.register_next_step_handler(call, add_score)
+
+
+def add_score(message):
+    user_admin = User().get(User.telegram_id == message.from_user.id)
+    if (user_admin.telegram_id == ADMIN_ID) & (user_admin.role == ROLE_ADMIN):
+        user_for_approve_id = message.data.split(' ')[1]
+        user_for_approve = User().get(User.telegram_id == user_for_approve_id)
+        print(user_for_approve)
+
 
 def ads_page(call):
     user = User().get(User.telegram_id == call.from_user.id)
