@@ -1,8 +1,9 @@
 TELEGRAM_TOKEN = '1632723356:AAGiOeV0X7m1yz3hlSOpC5ruK_CBM_L6QZM'
 
 ADMIN_ID = 547336139
-APPROVE = 'Подтвердить '
 ROLE_ADMIN = 'ADMIN'
+APPROVE = 'Подтвердить '
+YOU_GET = 'Вы получили '
 
 OLX_URL = 'https://www.olx.ua'
 SCORE = 'Счёт'

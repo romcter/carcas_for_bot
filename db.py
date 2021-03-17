@@ -7,7 +7,7 @@ class User(Model):
     first_name = CharField(null=True)
     last_name = CharField(null=True)
     username = CharField(null=True)
-    score = DoubleField(default=0.0)
+    score = FloatField(default=0.0)
     procent = IntegerField(default=10)
     role = CharField()
 
