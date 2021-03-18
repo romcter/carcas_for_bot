@@ -4,6 +4,10 @@ from config import *
 from bs4 import BeautifulSoup as BS
 from keyboa import keyboa_maker
 from db import db, User
+# from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
@@ -106,57 +110,72 @@ def create_keyboard_for_category(call, category):
 
 
 def parser_for_olx(call):
-    # bot.answer_callback_query(call.id)
     user = User().get(User.telegram_id == call.from_user.id)
-    main_request = requests.get(call.data, headers=HEADER).content
-    soup = BS(main_request, 'lxml')
-    new_ads = soup.find_all('tr', class_='wrap')
-    users = []
-    bot.send_message(call.from_user.id,
-                     text='Подожди 15 секунд.')
-    if (len(new_ads) > 0):
-        for new_ad in new_ads:
-            try:
-                if user.filter_by_safe_ads:
-                    if new_ad.find('span', class_='delivery-badge') is not None:
-                        pass
-                    else:
-                        print('без базопасной доставки')
-                        continue
-                link_to_ad = new_ad.find('a', class_='thumb').get('href')
-                price = new_ad.find('p', class_='price').get_text(strip=True)
-                ad_request = requests.get(link_to_ad, headers=HEADER).content
-                soap = BS(ad_request, 'lxml')
-                if user.filter_by_business:
-                    if soap.find('strong', class_='offer-details__value').get_text(strip=True) != 'Бизнес':
-                        pass
-                    else:
-                        print('бизнес акаун')
-                        continue
-                user_name = soap.find('div', 'quickcontact__user-name').get_text(strip=True)
-                link_to_profile = soap.find('a', 'quickcontact__image-link').get('href')
-                html = requests.get(link_to_profile, headers=HEADER).content
-                soip = BS(html, 'html.parser')
-                ads = len(soip.find_all('tr', 'wrap'))
-                if user.filter_by_all_ads:
-                    if ads <= 5:
-                        pass
-                    else:
-                        print('больше 5')
-                        continue
-                users.append({
-                    'link_to_ad': link_to_ad,
-                    'price': price,
-                    'ads': str(ads),
-                    'user_name': user_name
-                })
-            except:
-                print('Что то пошло не так')
-        for el in users:
-            bot.send_message(call.from_user.id, text=return_user_html(el), parse_mode='HTML')
+    if user.score > 0:
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        driver = webdriver.Chrome(options=chrome_options, executable_path='/Users/macbookpro/Downloads/chromedriver 2')
+        start_url = "https://www.olx.ua/d/obyavlenie/evrozabor-betonnyy-zabor-kiev-i-oblast-betonniy-parkan-IDJ9aZ3.html?sd=1#f9fa70f30e;promoted"
+        driver.get(start_url)
+        print(driver.page_source.encode("utf-8"))
+        driver.quit()
+        # driver = webdriver.Chrome(executable_path='/Users/macbookpro/Downloads/chromedriver')
+        # driver = webdriver.PhantomJS(executable_path='/Users/macbookpro/Downloads/phantomjs-2.1.1-macosx/bin/phantomjs')
+        # ad_request = driver.get('https://www.olx.ua/d/obyavlenie/evrozabor-betonnyy-zabor-kiev-i-oblast-betonniy-parkan-IDJ9aZ3.html?sd=1#f9fa70f30e;promoted')
+        # bot.answer_callback_query(call.id)
+        main_request = requests.get(call.data, headers=HEADER).content
+        soup = BS(main_request, 'lxml')
+        new_ads = soup.find_all('tr', class_='wrap')
+        users = []
+        bot.send_message(call.from_user.id,
+                         text='Подожди 15 секунд.')
+        if len(new_ads) > 0:
+            for new_ad in new_ads:
+                try:
+                    if user.filter_by_safe_ads:
+                        if new_ad.find('span', class_='delivery-badge') is not None:
+                            pass
+                        else:
+                            print('без базопасной доставки')
+                            continue
+                    link_to_ad = new_ad.find('a', class_='thumb').get('href')
+                    price = new_ad.find('p', class_='price').get_text(strip=True)
+                    ad_request = driver.get(link_to_ad)
+                    print(ad_request.content())
+                    driver.close()
+                    soap = BS(ad_request, 'lxml')
+                    if user.filter_by_business:
+                        if soap.find('strong', class_='offer-details__value').get_text(strip=True) != 'Бизнес':
+                            pass
+                        else:
+                            print('бизнес акаун')
+                            continue
+                    user_name = soap.find('div', 'quickcontact__user-name').get_text(strip=True)
+                    link_to_profile = soap.find('a', 'quickcontact__image-link').get('href')
+                    html = requests.get(link_to_profile, headers=HEADER).content
+                    soip = BS(html, 'html.parser')
+                    ads = len(soip.find_all('tr', 'wrap'))
+                    if user.filter_by_all_ads:
+                        if ads <= 5:
+                            pass
+                        else:
+                            print('больше 5')
+                            continue
+                    users.append({
+                        'link_to_ad': link_to_ad,
+                        'price': price,
+                        'ads': str(ads),
+                        'user_name': user_name
+                    })
+                except:
+                    print('Что то пошло не так')
+            for el in users:
+                bot.send_message(call.from_user.id, text=return_user_html(el), parse_mode='HTML')
+        else:
+            bot.send_message(call.from_user.id, text='Что то с площадкой, поменяй сайт')
     else:
-        bot.send_message(call.from_user.id, text='Что то с площадкой, поменяй сайт', parse_mode='HTML')
-
+        bot.send_message(call.from_user.id, text='Не достаточно денег, пополни баланс')
+        score_page(call)
 
 def return_user_html(user, diff=None):
     result = '<b>Имя: ' + user['user_name'] + '</b>\n<b>Ссылка: ' + user['link_to_ad'] + '</b>\n' \
