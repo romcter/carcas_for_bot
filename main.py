@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup as BS
 from keyboa import keyboa_maker
 from db import db, User
 # from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
+# from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
@@ -115,10 +115,11 @@ def parser_for_olx(call):
         chrome_options = Options()
         chrome_options.add_argument("--headless")
         driver = webdriver.Chrome(options=chrome_options, executable_path='/Users/macbookpro/Downloads/chromedriver 2')
-        start_url = "https://www.olx.ua/d/obyavlenie/evrozabor-betonnyy-zabor-kiev-i-oblast-betonniy-parkan-IDJ9aZ3.html?sd=1#f9fa70f30e;promoted"
-        driver.get(start_url)
-        print(driver.page_source.encode("utf-8"))
-        driver.quit()
+        # start_url = "https://www.olx.ua/d/obyavlenie/evrozabor-betonnyy-zabor-kiev-i-oblast-betonniy-parkan-IDJ9aZ3.html?sd=1#f9fa70f30e;promoted"
+        # driver.get(start_url)
+        # hz = driver.page_source.encode()
+        # print(hz)
+        # driver.quit()
         # driver = webdriver.Chrome(executable_path='/Users/macbookpro/Downloads/chromedriver')
         # driver = webdriver.PhantomJS(executable_path='/Users/macbookpro/Downloads/phantomjs-2.1.1-macosx/bin/phantomjs')
         # ad_request = driver.get('https://www.olx.ua/d/obyavlenie/evrozabor-betonnyy-zabor-kiev-i-oblast-betonniy-parkan-IDJ9aZ3.html?sd=1#f9fa70f30e;promoted')
@@ -140,9 +141,9 @@ def parser_for_olx(call):
                             continue
                     link_to_ad = new_ad.find('a', class_='thumb').get('href')
                     price = new_ad.find('p', class_='price').get_text(strip=True)
-                    ad_request = driver.get(link_to_ad)
-                    print(ad_request.content())
-                    driver.close()
+                    driver.get(link_to_ad)
+                    ad_request = driver.page_source.encode()
+                    # print(ad_request.content())
                     soap = BS(ad_request, 'lxml')
                     if user.filter_by_business:
                         if soap.find('strong', class_='offer-details__value').get_text(strip=True) != 'Бизнес':
@@ -171,8 +172,10 @@ def parser_for_olx(call):
                     print('Что то пошло не так')
             for el in users:
                 bot.send_message(call.from_user.id, text=return_user_html(el), parse_mode='HTML')
+            driver.close()
         else:
             bot.send_message(call.from_user.id, text='Что то с площадкой, поменяй сайт')
+            driver.close()
     else:
         bot.send_message(call.from_user.id, text='Не достаточно денег, пополни баланс')
         score_page(call)
