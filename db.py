@@ -9,9 +9,8 @@ class User(Model):
     username = CharField(null=True)
     score = FloatField(default=0.0)
     percent = IntegerField(default=10)
-    filter_by_safe_ads = BooleanField(default=True)
-    filter_by_business = BooleanField(default=True)
-    filter_by_all_ads = BooleanField(default=True)
+    filter_by_type_ads = CharField(null=True, default='Бизнес')
+    filter_by_all_ads = IntegerField(null=True, default=5)
     role = CharField()
 
     class Meta:
