@@ -170,21 +170,39 @@ def create_keyboard_for_category(call, category):
 def parser_for_olx(call):
     user = User().get(User.telegram_id == call.from_user.id)
     bot.answer_callback_query(call.id)
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    driver = webdriver.Chrome(options=chrome_options, executable_path='/Users/macbookpro/Downloads/chromedriver 2')
     main_request = requests.get(call.data, headers=HEADER).content
     soup = BS(main_request, 'lxml')
     new_ads = soup.find_all('tr', class_='wrap')
     users = []
     if len(new_ads) > 0:
         for new_ad in new_ads:
-            try:
+            # try:
                 if new_ad.find('span', class_='delivery-badge') is not None:
                     link_to_ad = new_ad.find('a', class_='thumb').get('href')
                     price = new_ad.find('p', class_='price').get_text(strip=True)
-                    ad_request = requests.get(link_to_ad, headers=HEADER).content
+                    # ad_request = requests.get(link_to_ad, headers=HEADER).content
+                    driver.get(link_to_ad)
+                    element = driver.find_element_by_class_name('link-phone')
+                    element.click()
+                    ad_request = driver.page_source
                     soap = BS(ad_request, 'lxml')
-                    if soap.find('strong', class_='offer-details__value').get_text(strip=True) != user.filter_by_type_ads:
-                        user_name = soap.find('div', 'quickcontact__user-name').get_text(strip=True)
-                        link_to_profile = soap.find('a', 'quickcontact__image-link').get('href')
+                    try:
+                        type_ads = soap.find('strong', class_='offer-details__value').get_text(strip=True)
+                    except:
+                        type_ads = soap.find('p', class_='css-xl6fe0-Text').get_text(strip=True)
+                    if type_ads != user.filter_by_type_ads:
+
+                        try:
+                            user_name = soap.find('div', 'quickcontact__user-name').get_text(strip=True)
+                        except:
+                            user_name = soap.find('h2', 'css-owpmn2-Text').get_text(strip=True)
+                        try:
+                            link_to_profile = soap.find('a', 'quickcontact__image-link').get('href')
+                        except:
+                            link_to_profile = OLX_URL + soap.find('a', 'css-1qj8w5r').get('href')
                         html = requests.get(link_to_profile, headers=HEADER).content
                         soip = BS(html, 'html.parser')
                         all_ads = len(soip.find_all('tr', 'wrap'))
@@ -201,8 +219,8 @@ def parser_for_olx(call):
                         print('Бизнес акаунт')
                 else:
                     print('Не часные объявления')
-            except:
-                print('Что то пошло не так')
+            # except:
+            #     print('Что то пошло не так')
         for el in users:
             bot.send_message(call.from_user.id, text=return_user_html(el), parse_mode='HTML')
     else:
