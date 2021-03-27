@@ -4,10 +4,6 @@ from config import *
 from bs4 import BeautifulSoup as BS
 from keyboa import keyboa_maker
 from db import db, User
-# from selenium import webdriver
-# from selenium.webdriver.common.keys import Keys
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
@@ -73,6 +69,7 @@ def filter_for_ads(call):
     filter_keyboard = keyboa_maker(items=FILTER_KEYBOARD, copy_text_to_callback=True, items_in_row=2)
     bot.send_message(call.from_user.id, text='', reply_markup=filter_keyboard)
 
+
 def approve(message):
     try:
         user_admin = User().get(User.telegram_id == message.from_user.id)
@@ -81,7 +78,7 @@ def approve(message):
             score = user_for_refill.score + float(message.html_text.split('(')[1].split(')')[0].split(' ')[0])
             User.update(score=score).where(User.telegram_id == user_for_refill.telegram_id).execute()
             bot.send_message(ADMIN_ID, text='Деньги зачислены')
-            message_for_customer_about_success = 'Тебе зачислено ' + str(score) + ' RUB'
+            message_for_customer_about_success = 'У тебя на балансе ' + str(score) + ' RUB'
             bot.send_message(user_for_refill.telegram_id, text=message_for_customer_about_success)
     except:
         bot.send_message(ADMIN_ID, text='Что то пошло не так, попробуй ещё раз.')
@@ -109,100 +106,25 @@ def create_keyboard_for_category(call, category):
     bot.send_message(call.from_user.id, text="Выбери рубрику:", reply_markup=keyboard_for_category)
 
 
-# def parser_for_olx(call):
-#     user = User().get(User.telegram_id == call.from_user.id)
-#     if user.score > 0:
-#         # chrome_options = Options()
-#         # chrome_options.add_argument("--headless")
-#         # driver = webdriver.Chrome(options=chrome_options, executable_path='/Users/macbookpro/Downloads/chromedriver 2')
-#         # bot.answer_callback_query(call.id)
-#         main_request = requests.get(call.data, headers=HEADER).content
-#         soup = BS(main_request, 'lxml')
-#         new_ads = soup.find_all('tr', class_='wrap')
-#         users = []
-#         # bot.send_message(call.from_user.id,
-#         #                  text='Подожди 15 секунд.')
-#         if len(new_ads) > 0:
-#             for new_ad in new_ads:
-#                 try:
-#                     if new_ad.find('span', class_='delivery-badge') is not None:
-#                         link_to_ad = new_ad.find('a', class_='thumb').get('href')
-#                         price = new_ad.find('p', class_='price').get_text(strip=True)
-#                         # driver.get(link_to_ad)
-#                         # ad_request = driver.page_source
-#                         ad_request = requests.get(link_to_ad)
-#                         # print(ad_request)
-#                         soap = BS(ad_request, 'lxml')
-#                         try:
-#                             type_ads = soap.find('strong', class_='offer-details__value').get_text(strip=True)
-#                         except:
-#                             type_ads = soap.find('p', class_='css-xl6fe0-Text').get_text(strip=True)
-#                         if type_ads == user.filter_by_type_ads:
-#                             user_name = soap.find('div', 'quickcontact__user-name').get_text(strip=True)
-#                             link_to_profile = soap.find('a', 'quickcontact__image-link').get('href')
-#                             html = requests.get(link_to_profile, headers=HEADER).content
-#                             soip = BS(html, 'html.parser')
-#                             all_ads = len(soip.find_all('tr', 'wrap'))
-#                             if all_ads < user.filter_by_all_ads:
-#                                 users.append({
-#                                     'link_to_ad': link_to_ad,
-#                                     'price': price,
-#                                     'ads': str(all_ads),
-#                                     'user_name': user_name
-#                                 })
-#                             else:
-#                                 print('Объявлений больше чем указано в фильтрах')
-#                         else:
-#                             print('Бизнес акаунт')
-#                     else:
-#                         print('Не часные объявления')
-#                 except:
-#                     print('Что то пошло не так')
-#             for el in users:
-#                 bot.send_message(call.from_user.id, text=return_user_html(el), parse_mode='HTML')
-#             # driver.close()
-#         else:
-#             bot.send_message(call.from_user.id, text='Что то с площадкой, поменяй сайт')
-#             # driver.close()
-#     else:
-#         bot.send_message(call.from_user.id, text='Не достаточно денег, пополни баланс')
-#         score_page(call)
 def parser_for_olx(call):
     user = User().get(User.telegram_id == call.from_user.id)
     bot.answer_callback_query(call.id)
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    driver = webdriver.Chrome(options=chrome_options, executable_path='/Users/macbookpro/Downloads/chromedriver 2')
     main_request = requests.get(call.data, headers=HEADER).content
     soup = BS(main_request, 'lxml')
     new_ads = soup.find_all('tr', class_='wrap')
     users = []
-    if len(new_ads) > 0:
-        for new_ad in new_ads:
-            # try:
+    try:
+        if len(new_ads) > 0:
+            for new_ad in new_ads:
                 if new_ad.find('span', class_='delivery-badge') is not None:
                     link_to_ad = new_ad.find('a', class_='thumb').get('href')
                     price = new_ad.find('p', class_='price').get_text(strip=True)
-                    # ad_request = requests.get(link_to_ad, headers=HEADER).content
-                    driver.get(link_to_ad)
-                    element = driver.find_element_by_class_name('link-phone')
-                    element.click()
-                    ad_request = driver.page_source
+                    ad_request = requests.get(link_to_ad, headers=HEADER).content
                     soap = BS(ad_request, 'lxml')
-                    try:
-                        type_ads = soap.find('strong', class_='offer-details__value').get_text(strip=True)
-                    except:
-                        type_ads = soap.find('p', class_='css-xl6fe0-Text').get_text(strip=True)
-                    if type_ads != user.filter_by_type_ads:
-
-                        try:
-                            user_name = soap.find('div', 'quickcontact__user-name').get_text(strip=True)
-                        except:
-                            user_name = soap.find('h2', 'css-owpmn2-Text').get_text(strip=True)
-                        try:
-                            link_to_profile = soap.find('a', 'quickcontact__image-link').get('href')
-                        except:
-                            link_to_profile = OLX_URL + soap.find('a', 'css-1qj8w5r').get('href')
+                    if soap.find('strong', class_='offer-details__value').get_text(
+                            strip=True) != user.filter_by_type_ads:
+                        user_name = soap.find('div', 'quickcontact__user-name').get_text(strip=True)
+                        link_to_profile = soap.find('a', 'quickcontact__image-link').get('href')
                         html = requests.get(link_to_profile, headers=HEADER).content
                         soip = BS(html, 'html.parser')
                         all_ads = len(soip.find_all('tr', 'wrap'))
@@ -218,15 +140,16 @@ def parser_for_olx(call):
                     else:
                         print('Бизнес акаунт')
                 else:
-                    print('Не часные объявления')
-            # except:
-            #     print('Что то пошло не так')
-        for el in users:
-            bot.send_message(call.from_user.id, text=return_user_html(el), parse_mode='HTML')
-    else:
-        bot.send_message(call.from_user.id, text='Что то с площадкой, поменяй сайт', parse_mode='HTML')
+                    print('Без безопасной сделки')
+            for el in users:
+                bot.send_message(call.from_user.id, text=return_user_html(el), parse_mode='HTML')
+        else:
+            bot.send_message(call.from_user.id, text='Что то с площадкой, поменяй сайт', parse_mode='HTML')
+    except:
+        print('Что то пошло не так')
 
-def return_user_html(user, diff=None):
+
+def return_user_html(user):
     result = '<b>Имя: ' + user['user_name'] + '</b>\n<b>Ссылка: ' + user['link_to_ad'] + '</b>\n' \
                                                                                          '<b>Цена: ' + user[
                  'price'] + '</b>\n<b>Количество объявлений: ' + user['ads'] + '</b>\n'
