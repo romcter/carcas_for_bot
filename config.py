@@ -19,7 +19,6 @@ MAIN_MENU = 'Меню'
 # Keyboard
 SITE_KEYBOARD = [{"Olx": OLX_URL}]
 MAIN_KEYBOARD = [SCORE, SITE_FOR_SALE, FILTER]
-SCORE_KEYBOARD = [REFILL]
 # Score
 APPROVE = 'Подтвердить '
 YOU_GET = 'Вы получили '
