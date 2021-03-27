@@ -4,22 +4,22 @@ ADMIN_ID = 547336139
 ROLE_ADMIN = 'ADMIN'
 
 # Ads
-OLX_URL = 'https://www.olx.ua'
 SCORE = 'Счёт'
 SITE_FOR_SALE = 'Доски объявлений'
-ADS = 'Объявления'
-REFILL = 'Пополнение через BCT Banker'
-URL_BANKER = 'https://telegram.me/BTC_CHANGE_BOT?start='
 FILTER = 'Фильтры'
-FILTER_BY_SAVE_ADS = 'Безопасная сделка'
-FILTER_BY_BUSINESS = 'Часные объявления'
-FILTER_BY_COUNT_OF_ADS = 'До 5 объявлений'
+OLX_URL = 'https://www.olx.ua'
+REFILL = 'Пополнение через чек BCT Banker'
+URL_BANKER = 'https://telegram.me/BTC_CHANGE_BOT?start='
+FILTER_BY_SAFE_ADS = 'Безопасная сделка'
+FILTER_BY_TYPE_ADS = 'Владелец объявления'
+FILTER_BY_YEAR_REGISTRATION = 'Год регистрации'
+FILTER_BY_COUNT_OF_ADS = 'Кол-во объявлений'
+COMEBACK = 'Назад'
+MAIN_MENU = 'Меню'
 # Keyboard
 SITE_KEYBOARD = [{"Olx": OLX_URL}]
-MAIN_KEYBOARD = [SCORE, SITE_FOR_SALE]
-SITE_AND_FILTER = [FILTER, ADS]
+MAIN_KEYBOARD = [SCORE, SITE_FOR_SALE, FILTER]
 SCORE_KEYBOARD = [REFILL]
-FILTER_KEYBOARD = [FILTER_BY_SAVE_ADS, FILTER_BY_BUSINESS, FILTER_BY_COUNT_OF_ADS]
 # Score
 APPROVE = 'Подтвердить '
 YOU_GET = 'Вы получили '
